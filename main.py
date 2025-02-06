@@ -578,6 +578,6 @@ def main(page: ft.Page):
         switch_view(login_form)
 
 # Executa o aplicativo Flet
-ft.app(target=main)
+# ft.app(target=main)
 # ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', port=80)
-# ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
+ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
