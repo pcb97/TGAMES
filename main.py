@@ -29,7 +29,9 @@ def main(page: ft.Page):
         # botao.content = ft.Text("AGUARDE",size=page.window_width/15,weight=ft.FontWeight.BOLD)
         botao.bgcolor = ft.colors.BLUE  # Muda cor enquanto processa
         botao.update()
-        on_click(e)
+        try:
+            on_click(e)
+        except: pass
         botao.disabled = False
         botao.bgcolor = cor  # Restaura cor original
         # botao.content = ft.Text(texto,size=page.window_width/15,weight=ft.FontWeight.BOLD)
@@ -478,10 +480,13 @@ def main(page: ft.Page):
             page.update()
             time.sleep(0.1)
             if "SUCESSO" in resp:
+                time.sleep(1)
+                updateUserInfo()
                 TextInscricao.value = "Inscrição finalizada com sucesso!"
             else:
                 TextInscricao.value = resp
             botaoAceitarRegulamento.disabled = False
+
             switch_view(inscricaoFinalizada)
 
         def cancelar(e):
@@ -506,7 +511,7 @@ def main(page: ft.Page):
         resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"LISTAR":True}).json()
         campeonatosDados = []
         for item in resp:
-            if not page.client_storage.get("USUARIO") in item['INSCRITOS']:
+            if not page.client_storage.get("USUARIO") in [x['USUARIO'] for x in item['INSCRITOS']]:
                 buttonInscricao = ft.TextButton(content=ft.Text("INSCREVER-SE", size=16, color="white", weight=ft.FontWeight.BOLD),on_click=lambda e: inscreverCampeonato(e, item),)
             else:
                 buttonInscricao = ft.TextButton(content=ft.Text("JA INSCRITO", size=16, color="green", weight=ft.FontWeight.BOLD))
@@ -515,7 +520,7 @@ def main(page: ft.Page):
                 [
                     ft.Image(src = item['IMAGEM'],width=70,height=100),
                     ft.Text(
-                        f"TORNEIO: {item['NOME']}\nInicio: {item['DATA']}",
+                        f"TORNEIO: {item['NOME']}\nInicio: {item['DATA']}\nValor Inscrição:  {item['VALOR_INSCRICAO']} Reais",
                         size=20,
                         color="white",
                         weight=ft.FontWeight.BOLD,
