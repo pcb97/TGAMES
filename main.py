@@ -525,7 +525,7 @@ def main(page: ft.Page):
                 [
                     ft.Image(src = item['IMAGEM'],width=70,height=100),
                     ft.Text(
-                        f"TORNEIO: {item['NOME']} | Inicio: {item['DATA']}",
+                        f"TORNEIO: {item['NOME']}\nInicio: {item['DATA']}",
                         size=20,
                         color="white",
                         weight=ft.FontWeight.BOLD,
