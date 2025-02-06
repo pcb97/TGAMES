@@ -307,7 +307,7 @@ def main(page: ft.Page):
                 return
             resp = resp.json()
             if resp['tipo']=='TEMPO':
-                maqInfo.value = f"Essa máquina consome R${round(resp['preco'],2)} por minuto.\nVocê poderá jogar por no máximo {calcTempoMaq(page.client_storage.get("UserInfo")['CREDITOS'],resp['preco'])} usando todo o saldo."
+                maqInfo.value = f"Essa máquina consome R${round(resp['preco'],2)} por minuto.\nVocê poderá jogar por no máximo {calcTempoMaq(page.client_storage.get('UserInfo')['CREDITOS'],resp['preco'])} usando todo o saldo."
             else:
                 creditosSelecionados.value = resp['preco'] if page.client_storage.get("UserInfo")['CREDITOS']>resp['preco'] else 0
                 maqInfo.value = f"Cada ficha para essa maquina custa R${round(resp['preco'],2)}\n *Você não poderá recuperar esse saldo após confirmar"
