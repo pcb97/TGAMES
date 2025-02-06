@@ -154,7 +154,7 @@ def main(page: ft.Page):
             return False
         page.client_storage.set("UserInfo",json.loads(resp.content))
         try:
-            text_superior.value = f"Saldo: {arredondar_para_baixo(page.client_storage.get("UserInfo")['CREDITOS'])} Reais"
+            text_superior.value = f"Saldo: {arredondar_para_baixo(page.client_storage.get('UserInfo')['CREDITOS'])} Reais"
         except: pass
         try:
             maquinasInfoDados = []
