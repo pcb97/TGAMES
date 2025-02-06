@@ -98,7 +98,7 @@ def main(page: ft.Page):
             return
         if "INICIADO" in resp:
             maqInfo.value = "Máquina liberada!"
-            text_superior.value = f"Você tem {page.client_storage.get("UserInfo")['CREDITOS']-CREDITOS} Reais"
+            text_superior.value = f"Você tem {page.client_storage.get('UserInfo')['CREDITOS']-CREDITOS} Reais"
             msgRetornoSuperior.visible = False
             iniciarButton.disabled = False
             updateUserInfo()
