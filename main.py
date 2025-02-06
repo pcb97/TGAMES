@@ -1,5 +1,4 @@
 import flet as ft
-userInfo = {}
 import requests
 import json
 import math
@@ -26,12 +25,12 @@ def main(page: ft.Page):
 
     def gerenciar_clique(e, on_click,cor,texto):
         botao = e.control
-        botao.content = ft.Text("AGUARDE",size=page.window_width/15,weight=ft.FontWeight.BOLD)
+        # botao.content = ft.Text("AGUARDE",size=page.window_width/15,weight=ft.FontWeight.BOLD)
         botao.bgcolor = ft.colors.BLUE  # Muda cor enquanto processa
         botao.update()
         on_click(e)
         botao.bgcolor = cor  # Restaura cor original
-        botao.content = ft.Text(texto,size=page.window_width/15,weight=ft.FontWeight.BOLD)
+        # botao.content = ft.Text(texto,size=page.window_width/15,weight=ft.FontWeight.BOLD)
         page.update()
 
     def criar_botao(texto, on_click, cor=ft.colors.AMBER_500,tamanho = page.window_width * 0.8):
@@ -82,9 +81,10 @@ def main(page: ft.Page):
         global userInfo
         iniciarButton.disabled = True
         iniciarButton.update()
-        CREDITOS = float(creditosSelecionados.value) if creditosSelecionados.value!=0 else userInfo['CREDITOS']
+        CREDITOS = float(creditosSelecionados.value) if creditosSelecionados.value!=0 else page.client_storage.get("UserInfo")['CREDITOS']
 
-        if CREDITOS>arredondar_para_baixo(userInfo['CREDITOS']) or userInfo['CREDITOS']==0:
+
+        if CREDITOS>arredondar_para_baixo(page.client_storage.get("UserInfo")['CREDITOS']) or page.client_storage.get("UserInfo")['CREDITOS']==0:
             msgRetornoSuperior.value = "CRÉDITOS INSUFICIENTES."
             msgRetornoSuperior.visible = True
             iniciarButton.disabled = False
@@ -92,13 +92,13 @@ def main(page: ft.Page):
             iniciarButton.update()
             return
         
-        resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":userInfo['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.client_storage.get("TOKEN"),"QNTD_CREDITOS":CREDITOS}).content.decode()
+        resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.client_storage.get("TOKEN"),"QNTD_CREDITOS":CREDITOS}).content.decode()
         if "TOKEN EXPIRADO" in resp:
             switch_view(login_form)
             return
         if "INICIADO" in resp:
             maqInfo.value = "Máquina liberada!"
-            text_superior.value = f"Você tem {userInfo['CREDITOS']-CREDITOS} Reais"
+            text_superior.value = f"Você tem {page.client_storage.get("UserInfo")['CREDITOS']-CREDITOS} Reais"
             msgRetornoSuperior.visible = False
             iniciarButton.disabled = False
             updateUserInfo()
@@ -147,20 +147,20 @@ def main(page: ft.Page):
 
     def updateUserInfo(username=None): #LÊ OS DADOS DO USUARIO E ATUALIZA AS VARIAVEIS.
         global userInfo
-        username = username if username!=None else userInfo['USUARIO']
+        username = username if username!=None else page.client_storage.get("UserInfo")['USUARIO']
         resp = requests.post("https://utpbliutdlvfuvnjyblsb2qrqy0heikd.lambda-url.sa-east-1.on.aws/",json={"USUARIO":username,"TOKEN":page.client_storage.get("TOKEN")})
         if "TOKEN EXPIRADO" in resp.content.decode():
             switch_view(login_form)
             return False
-        userInfo = json.loads(resp.content)
+        page.client_storage.set("UserInfo",json.loads(resp.content))
         try:
-            text_superior.value = f"Saldo: {arredondar_para_baixo(userInfo['CREDITOS'])} Reais"
+            text_superior.value = f"Saldo: {arredondar_para_baixo(page.client_storage.get("UserInfo")['CREDITOS'])} Reais"
         except: pass
         try:
             maquinasInfoDados = []
-            if len(userInfo['MAQ_ATIVAS'])>0:
+            if len(page.client_storage.get("UserInfo")['MAQ_ATIVAS'])>0:
                 maquinasInfoDados.append(ft.Text("MAQUINAS ATIVAS:", size=16, color="white", weight=ft.FontWeight.BOLD))
-            for item in userInfo['MAQ_ATIVAS']:
+            for item in page.client_storage.get("UserInfo")['MAQ_ATIVAS']:
                 inicio = item['DATA_INICIO'].split(".")[0].split("T")
                 fim = item['DATA_FIM'].split(".")[0].split("T")
                 dados = ft.Row(
@@ -187,7 +187,7 @@ def main(page: ft.Page):
             maquinasAtivas.controls = maquinasInfoDados
         except: pass
         try:
-            creditosSelecionados.value = arredondar_para_baixo(userInfo['CREDITOS'])
+            creditosSelecionados.value = arredondar_para_baixo(page.client_storage.get("UserInfo")['CREDITOS'])
         except: pass
         page.update()
         return True
@@ -301,15 +301,15 @@ def main(page: ft.Page):
         try:
             botaoConfirmMaq.disabled = True
             botaoConfirmMaq.update()
-            resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":userInfo['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.client_storage.get("TOKEN"),'INFOMAQ':True})
+            resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.client_storage.get("TOKEN"),'INFOMAQ':True})
             if "TOKEN EXPIRADO" in resp.text:
                 switch_view(login_form)
                 return
             resp = resp.json()
             if resp['tipo']=='TEMPO':
-                maqInfo.value = f"Essa máquina consome R${round(resp['preco'],2)} por minuto.\nVocê poderá jogar por no máximo {calcTempoMaq(userInfo['CREDITOS'],resp['preco'])} usando todo o saldo."
+                maqInfo.value = f"Essa máquina consome R${round(resp['preco'],2)} por minuto.\nVocê poderá jogar por no máximo {calcTempoMaq(page.client_storage.get("UserInfo")['CREDITOS'],resp['preco'])} usando todo o saldo."
             else:
-                creditosSelecionados.value = resp['preco'] if userInfo['CREDITOS']>resp['preco'] else 0
+                creditosSelecionados.value = resp['preco'] if page.client_storage.get("UserInfo")['CREDITOS']>resp['preco'] else 0
                 maqInfo.value = f"Cada ficha para essa maquina custa R${round(resp['preco'],2)}\n *Você não poderá recuperar esse saldo após confirmar"
             botaoConfirmMaq.disabled = False
             botaoConfirmMaq.update()
@@ -358,7 +358,7 @@ def main(page: ft.Page):
             switch_view(init_form)
             return
 
-        resp = requests.post("https://5n2aczmdhfw7lbu32kgmnuhhdq0bmqfz.lambda-url.sa-east-1.on.aws/",json={"USUARIO":userInfo['USUARIO'],"QUANTIDADE":quantidade})
+        resp = requests.post("https://5n2aczmdhfw7lbu32kgmnuhhdq0bmqfz.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"QUANTIDADE":quantidade})
         navegador = criar_form(
                 superiorInfo, msgRetornoSuperior,LOGO,
                 criar_botao("VOLTAR", voltarComprarCreditos)
@@ -373,7 +373,8 @@ def main(page: ft.Page):
 
     def DESLOGAR(e):
         global userInfo 
-        userInfo = {}
+        page.client_storage.set("UserInfo",{})
+
         password_input.value=''
         page.client_storage.set("TOKEN", '')
         switch_view(login_form)
@@ -483,7 +484,7 @@ def main(page: ft.Page):
 
     def inscreverCampeonato(e,item): #FECHA MAQUINAS COM TEMPO DISPONIVEL
         def aceitar(e):
-            resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"USUARIO":userInfo['USUARIO'],"TORNEIO":(item['NOME'],item['DATA']),"TOKEN":page.client_storage.get("TOKEN")}).content.decode()
+            resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"TORNEIO":(item['NOME'],item['DATA']),"TOKEN":page.client_storage.get("TOKEN")}).content.decode()
             page.close(dialog2)
             page.update()
             time.sleep(0.1)
@@ -573,8 +574,8 @@ def main(page: ft.Page):
     # Verificação de Token e Inicialização
 
     try:
-        page.on_app_lifecycle_state_change = backButton
-        page.on_app_lifecycle_state_change = backButton
+        # page.on_app_lifecycle_state_change = backButton
+        # page.on_app_lifecycle_state_change = backButton
         page.bgcolor = ft.colors.BLACK 
         ajustarComponentes()
         page.theme_mode = ft.ThemeMode.LIGHT       
@@ -584,10 +585,9 @@ def main(page: ft.Page):
         else:
             switch_view(login_form)
     except:
-        import traceback;print(traceback.format_exc())
         switch_view(login_form)
 
 # Executa o aplicativo Flet
-ft.app(target=main)
+# ft.app(target=main)
 # ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', port=80)
-# ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
+ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
