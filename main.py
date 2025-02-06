@@ -25,10 +25,12 @@ def main(page: ft.Page):
 
     def gerenciar_clique(e, on_click,cor,texto):
         botao = e.control
+        botao.disabled = True
         # botao.content = ft.Text("AGUARDE",size=page.window_width/15,weight=ft.FontWeight.BOLD)
         botao.bgcolor = ft.colors.BLUE  # Muda cor enquanto processa
         botao.update()
         on_click(e)
+        botao.disabled = False
         botao.bgcolor = cor  # Restaura cor original
         # botao.content = ft.Text(texto,size=page.window_width/15,weight=ft.FontWeight.BOLD)
         page.update()
@@ -79,7 +81,6 @@ def main(page: ft.Page):
         except:
             return
         global userInfo
-        iniciarButton.disabled = True
         iniciarButton.update()
         CREDITOS = float(creditosSelecionados.value) if creditosSelecionados.value!=0 else page.client_storage.get("UserInfo")['CREDITOS']
 
@@ -87,7 +88,6 @@ def main(page: ft.Page):
         if CREDITOS>arredondar_para_baixo(page.client_storage.get("UserInfo")['CREDITOS']) or page.client_storage.get("UserInfo")['CREDITOS']==0:
             msgRetornoSuperior.value = "CRÉDITOS INSUFICIENTES."
             msgRetornoSuperior.visible = True
-            iniciarButton.disabled = False
             msgRetornoSuperior.update()
             iniciarButton.update()
             return
@@ -100,14 +100,12 @@ def main(page: ft.Page):
             maqInfo.value = "Máquina liberada!"
             text_superior.value = f"Você tem {page.client_storage.get('UserInfo')['CREDITOS']-CREDITOS} Reais"
             msgRetornoSuperior.visible = False
-            iniciarButton.disabled = False
             updateUserInfo()
             switch_view(maquina_form_suced)
         else:
             msgRetornoSuperior.value = resp
             msgRetornoSuperior.visible = True
             msgRetornoSuperior.update()
-            iniciarButton.disabled = False
             iniciarButton.update()
         return
 
@@ -194,14 +192,12 @@ def main(page: ft.Page):
     
     def login(e): #FAZ LOGIN E ARMAZENA O TOKEN DO USUARIO
         global userInfo
-        botaoLogin.disabled = True
         botaoLogin.update()
         time.sleep(2)
         username, password = username_input.value, password_input.value
         if username=='' or password=='':
             loginMsg.value = 'Usuário/EMAIL ou senha inválidos'
             loginMsg.update()
-            botaoLogin.disabled = False
             botaoLogin.update()
             return
         resp = requests.post("https://s6v6wlfxlyjyamy7ye77m6y3ou0josxg.lambda-url.sa-east-1.on.aws/",json={"USUARIO":username,"SENHA":password}).content.decode()
@@ -216,11 +212,9 @@ def main(page: ft.Page):
         else:
             loginMsg.value = resp
             page.update()
-        botaoLogin.disabled = False
         botaoLogin.update()
 
     def register(e): #REALIZA O REGISTRO DE UM NOVO USUARIO
-        registerButon.disabled = True
         registerButon.update()
         data_nasc = birth_date_inputButton.text.split("NASCIMENTO: ")[-1]
         if username_input.value =="" or reg_password_input.value == "" or reg_nome_input.value =="" or reg_Email_input.value=='' or reg_Telefone_input.value=='':
@@ -251,7 +245,6 @@ def main(page: ft.Page):
             RegisterMsg.update()
             if "CADASTRADO" in resp:
                 switch_view(login_form)
-        registerButon.disabled = False
         registerButon.update()
 
 
@@ -299,7 +292,6 @@ def main(page: ft.Page):
         global LastMaquinaPrice
         global LastMaquinaTipe
         try:
-            botaoConfirmMaq.disabled = True
             botaoConfirmMaq.update()
             resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.client_storage.get("TOKEN"),'INFOMAQ':True})
             if "TOKEN EXPIRADO" in resp.text:
@@ -311,7 +303,6 @@ def main(page: ft.Page):
             else:
                 creditosSelecionados.value = resp['preco'] if page.client_storage.get("UserInfo")['CREDITOS']>resp['preco'] else 0
                 maqInfo.value = f"Cada ficha para essa maquina custa R${round(resp['preco'],2)}\n *Você não poderá recuperar esse saldo após confirmar"
-            botaoConfirmMaq.disabled = False
             botaoConfirmMaq.update()
             switch_view(descricao_maquina)
             LastMaquinaPrice = resp['preco']
@@ -322,7 +313,6 @@ def main(page: ft.Page):
             print(traceback.format_exc())
             msgRetornoSuperior.value = f"Máquina '{codigoMaquina.value}' não encontrada."
             msgRetornoSuperior.visible = True
-            botaoConfirmMaq.disabled = False
 
         page.update()
         return
@@ -351,7 +341,6 @@ def main(page: ft.Page):
         except:
             return
         global userInfo
-        botaoComprarCreditos.disabled = True
         botaoComprarCreditos.update()
         def voltarComprarCreditos(e):
             updateUserInfo()
@@ -366,7 +355,6 @@ def main(page: ft.Page):
         page.launch_url(resp.text)
         time.sleep(2)
         switch_view(navegador)
-        botaoComprarCreditos.disabled = False
         botaoComprarCreditos.update()
         return
 
@@ -484,6 +472,7 @@ def main(page: ft.Page):
 
     def inscreverCampeonato(e,item): #FECHA MAQUINAS COM TEMPO DISPONIVEL
         def aceitar(e):
+            botaoAceitarRegulamento.disabled = True
             resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"TORNEIO":(item['NOME'],item['DATA']),"TOKEN":page.client_storage.get("TOKEN")}).content.decode()
             page.close(dialog2)
             page.update()
@@ -492,6 +481,7 @@ def main(page: ft.Page):
                 TextInscricao.value = "Inscrição finalizada com sucesso!"
             else:
                 TextInscricao.value = resp
+            botaoAceitarRegulamento.disabled = False
             switch_view(inscricaoFinalizada)
 
         def cancelar(e):
@@ -502,7 +492,7 @@ def main(page: ft.Page):
             content=ft.Text(f"Clicando em sim, você está automaticamente aceitando os termos descritos no regulamento do torneio.", size=20, color="black", weight=ft.FontWeight.BOLD),
             actions=[
                 ft.TextButton("Não", on_click=cancelar),
-                ft.TextButton("Sim", on_click=aceitar),
+                botaoAceitarRegulamento := ft.TextButton("Sim", on_click=aceitar),
             ]
             )
         page.overlay.append(dialog2)
@@ -588,6 +578,6 @@ def main(page: ft.Page):
         switch_view(login_form)
 
 # Executa o aplicativo Flet
-# ft.app(target=main)
+ft.app(target=main)
 # ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', port=80)
-ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
+# ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
