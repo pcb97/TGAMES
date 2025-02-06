@@ -5,8 +5,6 @@ import math
 import time
 from datetime import datetime
 
-LastMaquinaPrice = 0
-LastMaquinaTipe = ''
 def main(page: ft.Page):
     # Configurações da Página
     page.title = "TGAMES"
@@ -82,7 +80,6 @@ def main(page: ft.Page):
             float(creditosSelecionados.value)
         except:
             return
-        global userInfo
         iniciarButton.update()
         CREDITOS = float(creditosSelecionados.value) if creditosSelecionados.value!=0 else page.client_storage.get("UserInfo")['CREDITOS']
 
@@ -146,7 +143,6 @@ def main(page: ft.Page):
         page.update()
 
     def updateUserInfo(username=None): #LÊ OS DADOS DO USUARIO E ATUALIZA AS VARIAVEIS.
-        global userInfo
         username = username if username!=None else page.client_storage.get("UserInfo")['USUARIO']
         resp = requests.post("https://utpbliutdlvfuvnjyblsb2qrqy0heikd.lambda-url.sa-east-1.on.aws/",json={"USUARIO":username,"TOKEN":page.client_storage.get("TOKEN")})
         if "TOKEN EXPIRADO" in resp.content.decode():
@@ -193,7 +189,6 @@ def main(page: ft.Page):
         return True
     
     def login(e): #FAZ LOGIN E ARMAZENA O TOKEN DO USUARIO
-        global userInfo
         botaoLogin.update()
         time.sleep(2)
         username, password = username_input.value, password_input.value
@@ -219,7 +214,7 @@ def main(page: ft.Page):
     def register(e): #REALIZA O REGISTRO DE UM NOVO USUARIO
         registerButon.update()
         data_nasc = birth_date_inputButton.text.split("NASCIMENTO: ")[-1]
-        if username_input.value =="" or reg_password_input.value == "" or reg_nome_input.value =="" or reg_Email_input.value=='' or reg_Telefone_input.value=='':
+        if reg_username_input.value =="" or reg_password_input.value == "" or reg_nome_input.value =="" or reg_Email_input.value=='' or reg_Telefone_input.value=='':
             RegisterMsg.value = "Preencha todos os dados!"
             RegisterMsg.color = "red"
             RegisterMsg.update()
@@ -290,9 +285,6 @@ def main(page: ft.Page):
             return "0 minutos"
 
     def obterInfoMaquina(e): #PEGA INFORMAÇÂO DAS MAQUINAS DISPONIVEIS
-        global userInfo
-        global LastMaquinaPrice
-        global LastMaquinaTipe
         try:
             botaoConfirmMaq.update()
             resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.client_storage.get("TOKEN"),'INFOMAQ':True})
@@ -307,8 +299,8 @@ def main(page: ft.Page):
                 maqInfo.value = f"Cada ficha para essa maquina custa R${round(resp['preco'],2)}\n *Você não poderá recuperar esse saldo após confirmar"
             botaoConfirmMaq.update()
             switch_view(descricao_maquina)
-            LastMaquinaPrice = resp['preco']
-            LastMaquinaTipe = resp['tipo']
+            page.client_storage.set("LastMaquinaPrice",resp['preco'])
+            page.client_storage.set("LastMaquinaTipe",resp['tipo'])
             return
         except:
             import traceback
@@ -324,9 +316,9 @@ def main(page: ft.Page):
         birth_date_inputButton.update()
  
     def updateTempoMaquina(e): #ATUALIZA O TEMPO DE MAQUINA PARA EXIBIR PARA O USUARIO
-        global LastMaquinaPrice
+        LastMaquinaPrice = page.client_storage.get("LastMaquinaPrice")
         e.data = e.data.replace(",",".")
-        if LastMaquinaTipe=='TEMPO':
+        if page.client_storage.get("LastMaquinaTipe")=='TEMPO':
             maqInfo.value = f"Essa máquina consome R${round(LastMaquinaPrice,2)} por minuto.\nVocê poderá jogar por {calcTempoMaq(e.data,LastMaquinaPrice)}."
         else:
             maqInfo.value = f"Cada ficha para essa maquina custa R${round(LastMaquinaPrice,2)}\nVocê poderá jogar com {calcFichaMaq(e.data,LastMaquinaPrice)}.\n *Você não poderá recuperar esse saldo após confirmar"
@@ -342,7 +334,6 @@ def main(page: ft.Page):
             quantidade = float(quantidadeCreditos.value)
         except:
             return
-        global userInfo
         botaoComprarCreditos.update()
         def voltarComprarCreditos(e):
             updateUserInfo()
@@ -362,7 +353,6 @@ def main(page: ft.Page):
 
 
     def DESLOGAR(e):
-        global userInfo 
         page.client_storage.set("UserInfo",{})
 
         password_input.value=''
@@ -507,7 +497,6 @@ def main(page: ft.Page):
 
 
     def getTorneios():
-        global userInfo
         resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"LISTAR":True}).json()
         campeonatosDados = []
         for item in resp:
@@ -574,7 +563,6 @@ def main(page: ft.Page):
         page.bgcolor = ft.colors.BLACK 
         ajustarComponentes()
         page.theme_mode = ft.ThemeMode.LIGHT       
-        global userInfo
         if updateUserInfo(username=page.client_storage.get("USUARIO")):
             switch_view(init_form)
         else:
