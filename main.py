@@ -24,7 +24,7 @@ def main(page: ft.Page):
     def gerenciar_clique(e, on_click,cor,texto):
         botao = e.control
         botao.disabled = True
-        # botao.content = ft.Text("AGUARDE",size=page.window_width/15,weight=ft.FontWeight.BOLD)
+        botao.content.value = "AGUARDE"
         botao.bgcolor = ft.colors.BLUE  # Muda cor enquanto processa
         botao.update()
         try:
@@ -32,7 +32,7 @@ def main(page: ft.Page):
         except: pass
         botao.disabled = False
         botao.bgcolor = cor  # Restaura cor original
-        # botao.content = ft.Text(texto,size=page.window_width/15,weight=ft.FontWeight.BOLD)
+        botao.content.value = texto
         page.update()
 
     def criar_botao(texto, on_click, cor=ft.colors.AMBER_500,tamanho = page.window_width * 0.8):
@@ -61,7 +61,7 @@ def main(page: ft.Page):
 
     #INFORMAÇÔES PARTE SUPERIOR
     # LOGO = ft.Text("TGAMES", size=90, weight=ft.FontWeight.BOLD, color=ft.colors.RED, text_align=ft.TextAlign.CENTER)
-    LOGO = ft.Image(src='/logo - B.png', fit=ft.ImageFit.CONTAIN)
+    LOGO = ft.Image(src='logo - B.png', fit=ft.ImageFit.CONTAIN)
     superiorInfo = ft.Column([ft.Text("",height=10),ft.Row(
         [
             ft.Text("", size=21, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
@@ -367,14 +367,16 @@ def main(page: ft.Page):
         quantidadeCreditos.update()
         return
 
-    def ajustarComponentes(x=None):
-        def ajustButton(x,largura = page.window.width * 0.8):
+    def ajustarComponentes(dados):
+        print(dados.data)
+        largura = json.loads(dados.data)['width']
+        def ajustButton(x,largura=largura*0.8):
             x.width = largura
-            x.content.size = page.window.width / 15
+            x.content.size = largura / 10
 
-        iconHome.icon_size=page.window.width/14
-        iconReload.icon_size=page.window.width/14
-        text_superior.size=page.window.width/20
+        iconHome.icon_size=largura/14
+        iconReload.icon_size=largura/14
+        text_superior.size=largura/20
 
         ajustButton(botaoLogin)
         ajustButton(registerButon)
@@ -384,14 +386,16 @@ def main(page: ft.Page):
         ajustButton(botaoComprarCreditos)
         ajustButton(liberarMaqButton)
         ajustButton(ComprarCreditosButton)
-        ajustButton(SairButton,page.window.width * 0.4)
+        ajustButton(SairButton,largura * 0.6)
+        ajustButton(botaoCampeonatos)
+        print(largura)
         page.update()  # Atualiza a interface
 
 
     login_form = criar_form(
         ft.Text("", size=21, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
         LOGO, ft.Text("Login", size=30, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER,color='white'),
-        username_input := ft.TextField(label=ft.Text("Usuário/EMAIL",color='white'), autofocus=True, value=page.client_storage.get("USUARIO"), text_align=ft.TextAlign.LEFT,text_size=25,color='white',border_color='white'),
+        username_input := ft.TextField(label=ft.Text("Usuário/EMAIL",color='white'), autofocus=True, value=page.client_storage.get("USUARIO") if not page.client_storage.get("USUARIO") else "", text_align=ft.TextAlign.LEFT,text_size=25,color='white',border_color='white'),
         password_input := ft.TextField(label=ft.Text("Senha",color='white'), password=True, can_reveal_password=True, value='', text_align=ft.TextAlign.LEFT,text_size=25,color='white',border_color='white'),
         botaoLogin := criar_botao("Entrar", lambda x:login(x)),
         ft.TextButton("Criar uma conta", on_click=lambda e: switch_view(register_form),icon_color='white'),
@@ -542,14 +546,15 @@ def main(page: ft.Page):
         superiorInfo, msgRetornoSuperior, LOGO,
         liberarMaqButton := criar_botao("Liberar Máquina", lambda e: switch_view(escolher_maquina)),
         ComprarCreditosButton := criar_botao("Comprar Créditos", lambda e: switch_view(compraCreditos_form)),
-        criar_botao("Campeonatos", lambda e: (getTorneios(), switch_view(campeonatoForm))[-1] ),
+        botaoCampeonatos:=criar_botao("Campeonatos", lambda e: (getTorneios(), switch_view(campeonatoForm))[-1] ),
 
         maquinasAtivas := ft.Column(controls=[]),
         SairButton := criar_botao("SAIR",DESLOGAR,cor=ft.colors.RED,tamanho=200)
     
     )
     def backButton(x):
-        if updateUserInfo(username=page.client_storage.get("USUARIO")):
+        user = page.client_storage.get("USUARIO") if page.client_storage.contains_key("USUARIO") else None
+        if updateUserInfo(username=user):
             switch_view(init_form)
         else:
             switch_view(login_form)
@@ -558,19 +563,23 @@ def main(page: ft.Page):
     # Verificação de Token e Inicialização
 
     try:
-        # page.on_app_lifecycle_state_change = backButton
-        # page.on_app_lifecycle_state_change = backButton
+        page.on_app_lifecycle_state_change = backButton
+        page.on_route_change = backButton
+        page.on_resized = ajustarComponentes
         page.bgcolor = ft.colors.BLACK 
-        ajustarComponentes()
-        page.theme_mode = ft.ThemeMode.LIGHT       
-        if updateUserInfo(username=page.client_storage.get("USUARIO")):
+        # ajustarComponentes()
+        page.theme_mode = ft.ThemeMode.LIGHT
+        if page.client_storage.contains_key("USUARIO") and updateUserInfo(username=page.client_storage.get("USUARIO")):
             switch_view(init_form)
         else:
             switch_view(login_form)
     except:
+        import traceback;print(traceback.format_exc())
         switch_view(login_form)
 
 # Executa o aplicativo Flet
-# ft.app(target=main)
+ft.app(target=main)
 # ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', port=80)
-ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
+# ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
+
+#flet run --port=80 --host="0.0.0.0" --web
