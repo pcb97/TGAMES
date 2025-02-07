@@ -5,37 +5,42 @@ import math
 import time
 from datetime import datetime
 
+
 def main(page: ft.Page):
-    # Configurações da Página
     page.title = "TGAMES"
     page.vertical_alignment = ft.MainAxisAlignment.CENTER
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
-    page.padding = 20
+    page.padding = 10
     page.window_width = 500
     page.window_height = 800
     page.scroll = ft.ScrollMode.AUTO
-    page.bgcolor = ft.colors.BLACK12
+    page.bgcolor = ft.Colors.BLACK12
 
 
-    def arredondar_para_baixo(numero):
-        return math.floor(numero * 100) / 100
+    def arredondar_para_baixo(numero,tratar=False):
+        valor = math.floor(numero * 100) / 100
+        if not tratar: return valor
+        if valor>1000:
+            return f"{round(valor/1000,2)}K"
+        else:
+            return round(valor,1)
 
 
     def gerenciar_clique(e, on_click,cor,texto):
         botao = e.control
         botao.disabled = True
         botao.content.value = "AGUARDE"
-        botao.bgcolor = ft.colors.BLUE  # Muda cor enquanto processa
+        botao.bgcolor = ft.Colors.BLUE  # Muda cor enquanto processa
         botao.update()
         try:
             on_click(e)
-        except: pass
+        except: print(traceback.format_exc())
         botao.disabled = False
         botao.bgcolor = cor  # Restaura cor original
         botao.content.value = texto
         page.update()
 
-    def criar_botao(texto, on_click, cor=ft.colors.AMBER_500,tamanho = page.window_width * 0.8):
+    def criar_botao(texto, on_click, cor=ft.Colors.AMBER_500,tamanho = page.window_width * 0.8):
         def rodar(e):
             return gerenciar_clique(e, on_click,cor,texto)
         return ft.ElevatedButton(
@@ -43,9 +48,9 @@ def main(page: ft.Page):
             on_click=rodar,
             style=ft.ButtonStyle(
                 padding=ft.padding.all(20),
-                side=ft.BorderSide(2, ft.colors.RED),
+                side=ft.BorderSide(2, ft.Colors.RED),
                 bgcolor=cor,
-                color=ft.colors.WHITE,
+                color=ft.Colors.WHITE,
             ),width=tamanho
         )
 
@@ -60,16 +65,14 @@ def main(page: ft.Page):
 
 
     #INFORMAÇÔES PARTE SUPERIOR
-    # LOGO = ft.Text("TGAMES", size=90, weight=ft.FontWeight.BOLD, color=ft.colors.RED, text_align=ft.TextAlign.CENTER)
-    LOGO = ft.Image(src='logo - B.png', fit=ft.ImageFit.CONTAIN)
-    superiorInfo = ft.Column([ft.Text("",height=10),ft.Row(
+    LOGO = ft.Image(src='LOGO_FIXED.png')
+    superiorInfo = ft.Column([ft.Row([ft.Text("",height=10)]),ft.Row(
         [
-            ft.Text("", size=21, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
-            iconHome := ft.IconButton(ft.icons.HOME, on_click=lambda e: switch_view(init_form),icon_size=page.window_width/14,icon_color='white'),
+            iconHome := ft.IconButton(ft.Icons.HOME, on_click=lambda e: switch_view(init_form),icon_size=page.window_width/10,icon_color='white',padding=0),
             text_superior := ft.Text("", size=page.window_width/20, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER,color='white'),
-            iconReload := ft.IconButton(ft.icons.UPDATE_ROUNDED, on_click=lambda e: updateUserInfo(),icon_size=page.window_width/14,icon_color='white'),
+            iconReload := ft.IconButton(ft.Icons.UPDATE_ROUNDED, on_click=lambda e: updateUserInfo(),icon_size=page.window_width/10,icon_color='white'),
         ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN
-    )])
+    )],alignment=ft.MainAxisAlignment.CENTER)
     msgRetornoSuperior = ft.Text("", size=25, weight=ft.FontWeight.BOLD, color='red', text_align=ft.TextAlign.CENTER,visible=False)
     ###################################################
 
@@ -80,7 +83,6 @@ def main(page: ft.Page):
             float(creditosSelecionados.value)
         except:
             return
-        iniciarButton.update()
         CREDITOS = float(creditosSelecionados.value) if creditosSelecionados.value!=0 else page.client_storage.get("UserInfo")['CREDITOS']
 
 
@@ -88,7 +90,6 @@ def main(page: ft.Page):
             msgRetornoSuperior.value = "CRÉDITOS INSUFICIENTES."
             msgRetornoSuperior.visible = True
             msgRetornoSuperior.update()
-            iniciarButton.update()
             return
         
         resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.client_storage.get("TOKEN"),"QNTD_CREDITOS":CREDITOS}).content.decode()
@@ -105,7 +106,6 @@ def main(page: ft.Page):
             msgRetornoSuperior.value = resp
             msgRetornoSuperior.visible = True
             msgRetornoSuperior.update()
-            iniciarButton.update()
         return
 
 
@@ -144,13 +144,14 @@ def main(page: ft.Page):
 
     def updateUserInfo(username=None): #LÊ OS DADOS DO USUARIO E ATUALIZA AS VARIAVEIS.
         username = username if username!=None else page.client_storage.get("UserInfo")['USUARIO']
+
         resp = requests.post("https://utpbliutdlvfuvnjyblsb2qrqy0heikd.lambda-url.sa-east-1.on.aws/",json={"USUARIO":username,"TOKEN":page.client_storage.get("TOKEN")})
         if "TOKEN EXPIRADO" in resp.content.decode():
             switch_view(login_form)
             return False
         page.client_storage.set("UserInfo",json.loads(resp.content))
         try:
-            text_superior.value = f"Saldo: {arredondar_para_baixo(page.client_storage.get('UserInfo')['CREDITOS'])} Reais"
+            text_superior.value = f"Saldo: {arredondar_para_baixo(page.client_storage.get('UserInfo')['CREDITOS'],tratar=True)} Reais"
         except: pass
         try:
             maquinasInfoDados = []
@@ -178,7 +179,7 @@ def main(page: ft.Page):
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,  # Alinha verticalmente no centro
                     )
 
-                maquinasInfoDados.append(ft.Container(dados,border=ft.border.all(3, ft.colors.WHITE),border_radius=10,alignment=ft.alignment.center))    
+                maquinasInfoDados.append(ft.Container(dados,border=ft.border.all(3, ft.Colors.WHITE),border_radius=10,alignment=ft.alignment.center))    
 
             maquinasAtivas.controls = maquinasInfoDados
         except: pass
@@ -189,30 +190,26 @@ def main(page: ft.Page):
         return True
     
     def login(e): #FAZ LOGIN E ARMAZENA O TOKEN DO USUARIO
-        botaoLogin.update()
         time.sleep(2)
         username, password = username_input.value, password_input.value
         if username=='' or password=='':
             loginMsg.value = 'Usuário/EMAIL ou senha inválidos'
             loginMsg.update()
-            botaoLogin.update()
             return
         resp = requests.post("https://s6v6wlfxlyjyamy7ye77m6y3ou0josxg.lambda-url.sa-east-1.on.aws/",json={"USUARIO":username,"SENHA":password}).content.decode()
 
         if "TOKEN" in resp:
             DADOS = eval(resp)
             page.client_storage.set("TOKEN", DADOS['TOKEN'])
-            page.client_storage.set("USUARIO", DADOS['USUARIO'])
             updateUserInfo(DADOS['USUARIO'])
             switch_view(init_form)
             loginMsg.value = ""
         else:
             loginMsg.value = resp
             page.update()
-        botaoLogin.update()
+        password_input.value = ""
 
     def register(e): #REALIZA O REGISTRO DE UM NOVO USUARIO
-        registerButon.update()
         data_nasc = birth_date_inputButton.text.split("NASCIMENTO: ")[-1]
         if reg_username_input.value =="" or reg_password_input.value == "" or reg_nome_input.value =="" or reg_Email_input.value=='' or reg_Telefone_input.value=='':
             RegisterMsg.value = "Preencha todos os dados!"
@@ -242,7 +239,6 @@ def main(page: ft.Page):
             RegisterMsg.update()
             if "CADASTRADO" in resp:
                 switch_view(login_form)
-        registerButon.update()
 
 
     def criar_form(*controls): #CRIA AS PAGINAS
@@ -286,7 +282,6 @@ def main(page: ft.Page):
 
     def obterInfoMaquina(e): #PEGA INFORMAÇÂO DAS MAQUINAS DISPONIVEIS
         try:
-            botaoConfirmMaq.update()
             resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.client_storage.get("TOKEN"),'INFOMAQ':True})
             if "TOKEN EXPIRADO" in resp.text:
                 switch_view(login_form)
@@ -297,7 +292,6 @@ def main(page: ft.Page):
             else:
                 creditosSelecionados.value = resp['preco'] if page.client_storage.get("UserInfo")['CREDITOS']>resp['preco'] else 0
                 maqInfo.value = f"Cada ficha para essa maquina custa R${round(resp['preco'],2)}\n *Você não poderá recuperar esse saldo após confirmar"
-            botaoConfirmMaq.update()
             switch_view(descricao_maquina)
             page.client_storage.set("LastMaquinaPrice",resp['preco'])
             page.client_storage.set("LastMaquinaTipe",resp['tipo'])
@@ -334,7 +328,6 @@ def main(page: ft.Page):
             quantidade = float(quantidadeCreditos.value)
         except:
             return
-        botaoComprarCreditos.update()
         def voltarComprarCreditos(e):
             updateUserInfo()
             switch_view(init_form)
@@ -348,12 +341,11 @@ def main(page: ft.Page):
         page.launch_url(resp.text)
         time.sleep(2)
         switch_view(navegador)
-        botaoComprarCreditos.update()
         return
 
 
     def DESLOGAR(e):
-        page.client_storage.set("UserInfo",{})
+        page.client_storage.remove("UserInfo")
 
         password_input.value=''
         page.client_storage.set("TOKEN", '')
@@ -367,16 +359,18 @@ def main(page: ft.Page):
         quantidadeCreditos.update()
         return
 
-    def ajustarComponentes(dados):
-        print(dados.data)
-        largura = json.loads(dados.data)['width']
-        def ajustButton(x,largura=largura*0.8):
+    def ajustarComponentes(dados,largura=None):
+        largura = json.loads(dados.data)['width'] if largura==None else largura
+        if largura>800: 
+            largura = 800
+            LOGO.width = 800
+        def ajustButton(x,largura=largura*0.9):
             x.width = largura
             x.content.size = largura / 10
 
-        iconHome.icon_size=largura/14
-        iconReload.icon_size=largura/14
-        text_superior.size=largura/20
+        iconHome.icon_size=largura/8
+        iconReload.icon_size=largura/8
+        text_superior.size=largura/15
 
         ajustButton(botaoLogin)
         ajustButton(registerButon)
@@ -384,18 +378,20 @@ def main(page: ft.Page):
         ajustButton(iniciarButton)
         ajustButton(voltarButton)
         ajustButton(botaoComprarCreditos)
+        ajustButton(voltarButtonInscricao)
         ajustButton(liberarMaqButton)
         ajustButton(ComprarCreditosButton)
+        ajustButton(botaoCampeonatos)
         ajustButton(SairButton,largura * 0.6)
         ajustButton(botaoCampeonatos)
-        print(largura)
         page.update()  # Atualiza a interface
 
-
+    
+    userInfo = page.client_storage.get("UserInfo")
     login_form = criar_form(
         ft.Text("", size=21, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
         LOGO, ft.Text("Login", size=30, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER,color='white'),
-        username_input := ft.TextField(label=ft.Text("Usuário/EMAIL",color='white'), autofocus=True, value=page.client_storage.get("USUARIO") if not page.client_storage.get("USUARIO") else "", text_align=ft.TextAlign.LEFT,text_size=25,color='white',border_color='white'),
+        username_input := ft.TextField(label=ft.Text("Usuário/EMAIL",color='white'), autofocus=True, value=userInfo['USUARIO'] if userInfo!=None and "USUARIO" in userInfo.keys() else "", text_align=ft.TextAlign.LEFT,text_size=25,color='white',border_color='white'),
         password_input := ft.TextField(label=ft.Text("Senha",color='white'), password=True, can_reveal_password=True, value='', text_align=ft.TextAlign.LEFT,text_size=25,color='white',border_color='white'),
         botaoLogin := criar_botao("Entrar", lambda x:login(x)),
         ft.TextButton("Criar uma conta", on_click=lambda e: switch_view(register_form),icon_color='white'),
@@ -413,7 +409,7 @@ def main(page: ft.Page):
 
         reg_password_input := ft.TextField(label=ft.Text("Senha",color='white'), password=True, can_reveal_password=True, text_align=ft.TextAlign.LEFT,text_size=25,color='white',border_color='white'),
         reg_confirm_password_input := ft.TextField(label=ft.Text("Confirme a senha",color='white'), password=True, can_reveal_password=True, text_align=ft.TextAlign.LEFT,text_size=25,color='white',border_color='white'),
-        birth_date_inputButton := ft.ElevatedButton("SELECIONE A DATA DE NASCIMENTO",icon=ft.icons.CALENDAR_MONTH,on_click=lambda e: page.open(ft.DatePicker(first_date=datetime(year=1900, month=1, day=1),last_date=datetime.today(),on_change=atualizaData)),color='black'),
+        birth_date_inputButton := ft.ElevatedButton("SELECIONE A DATA DE NASCIMENTO",icon=ft.Icons.CALENDAR_MONTH,on_click=lambda e: page.open(ft.DatePicker(first_date=datetime(year=1900, month=1, day=1),last_date=datetime.today(),on_change=atualizaData)),color='black'),
         RegisterMsg := ft.Text("", text_align=ft.TextAlign.CENTER,color='white'),
         registerButon := criar_botao("Cadastrar", register),
         ft.TextButton("Já tem uma conta? Login", on_click=lambda e: switch_view(login_form))
@@ -433,7 +429,7 @@ def main(page: ft.Page):
         LOGO, 
         msgRetornoSuperior, 
         creditosSelecionados := ft.TextField(label=ft.Text("DIGITE O VALOR QUE DESEJA UTILIZAR DO SALDO:",color='white'), autofocus=False,value=0, text_align=ft.TextAlign.CENTER,text_size=30,keyboard_type=ft.KeyboardType.NUMBER,on_change=updateTempoMaquina,color='white',border_color='white'),
-        ft.Container(maqInfo,border=ft.border.all(2, ft.colors.GREY_500),border_radius=10,alignment=ft.alignment.center),
+        ft.Container(maqInfo,border=ft.border.all(2, ft.Colors.GREY_500),border_radius=10,alignment=ft.alignment.center),
         iniciarButton := criar_botao("INICIAR", iniciar_tempo)
     )
 
@@ -463,7 +459,7 @@ def main(page: ft.Page):
         LOGO, 
         msgRetornoSuperior, 
         TextInscricao  := ft.Text("Inscrição finalizada!",size=40, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER,color='white'),
-        criar_botao("VOLTAR", lambda x:switch_view(init_form))
+        voltarButtonInscricao := criar_botao("VOLTAR", lambda x:switch_view(init_form))
     )
 
     def inscreverCampeonato(e,item): #FECHA MAQUINAS COM TEMPO DISPONIVEL
@@ -504,7 +500,7 @@ def main(page: ft.Page):
         resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"LISTAR":True}).json()
         campeonatosDados = []
         for item in resp:
-            if not page.client_storage.get("USUARIO") in [x['USUARIO'] for x in item['INSCRITOS']]:
+            if not page.client_storage.get("UserInfo")['USUARIO'] in [x['USUARIO'] for x in item['INSCRITOS']]:
                 buttonInscricao = ft.TextButton(content=ft.Text("INSCREVER-SE", size=16, color="white", weight=ft.FontWeight.BOLD),on_click=lambda e: inscreverCampeonato(e, item),)
             else:
                 buttonInscricao = ft.TextButton(content=ft.Text("JA INSCRITO", size=16, color="green", weight=ft.FontWeight.BOLD))
@@ -532,7 +528,7 @@ def main(page: ft.Page):
                 alignment=ft.MainAxisAlignment.CENTER,  # Alinha horizontalmente no centro
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,  # Alinha verticalmente no centro
                 )])
-            campeonatosDados.append(ft.Container(dados,border=ft.border.all(3, ft.colors.WHITE),border_radius=10,alignment=ft.alignment.center))    
+            campeonatosDados.append(ft.Container(dados,border=ft.border.all(3, ft.Colors.WHITE),border_radius=10,alignment=ft.alignment.center))    
         campeonadosDisp.controls = campeonatosDados
         return None
     
@@ -549,12 +545,11 @@ def main(page: ft.Page):
         botaoCampeonatos:=criar_botao("Campeonatos", lambda e: (getTorneios(), switch_view(campeonatoForm))[-1] ),
 
         maquinasAtivas := ft.Column(controls=[]),
-        SairButton := criar_botao("SAIR",DESLOGAR,cor=ft.colors.RED,tamanho=200)
+        SairButton := criar_botao("SAIR",DESLOGAR,cor=ft.Colors.RED,tamanho=200)
     
     )
     def backButton(x):
-        user = page.client_storage.get("USUARIO") if page.client_storage.contains_key("USUARIO") else None
-        if updateUserInfo(username=user):
+        if updateUserInfo():
             switch_view(init_form)
         else:
             switch_view(login_form)
@@ -563,13 +558,22 @@ def main(page: ft.Page):
     # Verificação de Token e Inicialização
 
     try:
-        page.on_app_lifecycle_state_change = backButton
+        # page.on_app_lifecycle_state_change = backButton
         page.on_route_change = backButton
+        page.on_view_pop = backButton
         page.on_resized = ajustarComponentes
-        page.bgcolor = ft.colors.BLACK 
-        # ajustarComponentes()
+        page.locale_configuration = ft.LocaleConfiguration(
+        supported_locales=[
+            ft.Locale("pt", "BR"),  
+            ft.Locale("en", "US"), 
+        ],
+        current_locale=ft.Locale("de", "DE"),
+    )
+
+        page.bgcolor = ft.Colors.BLACK 
+        ajustarComponentes(None,page.width)
         page.theme_mode = ft.ThemeMode.LIGHT
-        if page.client_storage.contains_key("USUARIO") and updateUserInfo(username=page.client_storage.get("USUARIO")):
+        if page.client_storage.contains_key("UserInfo") and updateUserInfo(username=page.client_storage.get("UserInfo")['USUARIO']):
             switch_view(init_form)
         else:
             switch_view(login_form)
