@@ -4,7 +4,37 @@ import json
 import math
 import time
 from datetime import datetime
+import flet as ft
+import logging
+import sys
+import traceback
+from logging.handlers import RotatingFileHandler
 
+LOG_FILE = "app.log"
+MAX_LOG_SIZE = 1 * 1024 * 1024  # 1 MB
+BACKUP_COUNT = 5  # Mantém até 5 arquivos antigos
+
+handler = RotatingFileHandler(LOG_FILE, maxBytes=MAX_LOG_SIZE, backupCount=BACKUP_COUNT)
+handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+logger.addHandler(handler)
+
+# Redirecionar print() para logging
+class LogRedirector:
+    def write(self, message):
+        if message.strip():
+            logger.info(message.strip())
+
+    def flush(self):
+        pass
+
+    def isatty(self):
+        return False
+
+sys.stdout = LogRedirector()
+sys.stderr = LogRedirector()
 
 def main(page: ft.Page):
     page.title = "TGAMES"
@@ -83,22 +113,22 @@ def main(page: ft.Page):
             float(creditosSelecionados.value)
         except:
             return
-        CREDITOS = float(creditosSelecionados.value) if creditosSelecionados.value!=0 else page.client_storage.get("UserInfo")['CREDITOS']
+        CREDITOS = float(creditosSelecionados.value) if creditosSelecionados.value!=0 else page.session.get("UserInfo")['CREDITOS']
 
 
-        if CREDITOS>arredondar_para_baixo(page.client_storage.get("UserInfo")['CREDITOS']) or page.client_storage.get("UserInfo")['CREDITOS']==0:
+        if CREDITOS>arredondar_para_baixo(page.session.get("UserInfo")['CREDITOS']) or page.session.get("UserInfo")['CREDITOS']==0:
             msgRetornoSuperior.value = "CRÉDITOS INSUFICIENTES."
             msgRetornoSuperior.visible = True
             msgRetornoSuperior.update()
             return
         
-        resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.client_storage.get("TOKEN"),"QNTD_CREDITOS":CREDITOS}).content.decode()
+        resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.session.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.session.get("TOKEN"),"QNTD_CREDITOS":CREDITOS}).content.decode()
         if "TOKEN EXPIRADO" in resp:
             switch_view(login_form)
             return
         if "INICIADO" in resp:
             maqInfo.value = "Máquina liberada!"
-            text_superior.value = f"Você tem {page.client_storage.get('UserInfo')['CREDITOS']-CREDITOS} Reais"
+            text_superior.value = f"Você tem {page.session.get('UserInfo')['CREDITOS']-CREDITOS} Reais"
             msgRetornoSuperior.visible = False
             updateUserInfo()
             switch_view(maquina_form_suced)
@@ -114,7 +144,7 @@ def main(page: ft.Page):
         def finalizar_maquina(e):
             botaoCancelarMaq.disabled = True
             botaoCancelarMaq.update()
-            resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"ID":dados['ID'],"PARAR":True,'USUARIO':dados['USUARIO'],"MAQUINA":dados['MAQUINA'],'TOKEN':page.client_storage.get("TOKEN")}).content.decode()
+            resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"ID":dados['ID'],"PARAR":True,'USUARIO':dados['USUARIO'],"MAQUINA":dados['MAQUINA'],'TOKEN':page.session.get("TOKEN")}).content.decode()
             if "TOKEN EXPIRADO" in resp:
                 dialog.open = False
                 page.update()
@@ -143,21 +173,21 @@ def main(page: ft.Page):
         page.update()
 
     def updateUserInfo(username=None): #LÊ OS DADOS DO USUARIO E ATUALIZA AS VARIAVEIS.
-        username = username if username!=None else page.client_storage.get("UserInfo")['USUARIO']
+        username = username if username!=None else page.session.get("UserInfo")['USUARIO']
 
-        resp = requests.post("https://utpbliutdlvfuvnjyblsb2qrqy0heikd.lambda-url.sa-east-1.on.aws/",json={"USUARIO":username,"TOKEN":page.client_storage.get("TOKEN")})
+        resp = requests.post("https://utpbliutdlvfuvnjyblsb2qrqy0heikd.lambda-url.sa-east-1.on.aws/",json={"USUARIO":username,"TOKEN":page.session.get("TOKEN")})
         if "TOKEN EXPIRADO" in resp.content.decode():
             switch_view(login_form)
             return False
-        page.client_storage.set("UserInfo",json.loads(resp.content))
+        page.session.set("UserInfo",json.loads(resp.content))
         try:
-            text_superior.value = f"Saldo: {arredondar_para_baixo(page.client_storage.get('UserInfo')['CREDITOS'],tratar=True)} Reais"
+            text_superior.value = f"Saldo: {arredondar_para_baixo(page.session.get('UserInfo')['CREDITOS'],tratar=True)} Reais"
         except: pass
         try:
             maquinasInfoDados = []
-            if len(page.client_storage.get("UserInfo")['MAQ_ATIVAS'])>0:
+            if len(page.session.get("UserInfo")['MAQ_ATIVAS'])>0:
                 maquinasInfoDados.append(ft.Text("MAQUINAS ATIVAS:", size=16, color="white", weight=ft.FontWeight.BOLD))
-            for item in page.client_storage.get("UserInfo")['MAQ_ATIVAS']:
+            for item in page.session.get("UserInfo")['MAQ_ATIVAS']:
                 inicio = item['DATA_INICIO'].split(".")[0].split("T")
                 fim = item['DATA_FIM'].split(".")[0].split("T")
                 dados = ft.Row(
@@ -184,7 +214,7 @@ def main(page: ft.Page):
             maquinasAtivas.controls = maquinasInfoDados
         except: pass
         try:
-            creditosSelecionados.value = arredondar_para_baixo(page.client_storage.get("UserInfo")['CREDITOS'])
+            creditosSelecionados.value = arredondar_para_baixo(page.session.get("UserInfo")['CREDITOS'])
         except: pass
         page.update()
         return True
@@ -200,7 +230,7 @@ def main(page: ft.Page):
 
         if "TOKEN" in resp:
             DADOS = eval(resp)
-            page.client_storage.set("TOKEN", DADOS['TOKEN'])
+            page.session.set("TOKEN", DADOS['TOKEN'])
             updateUserInfo(DADOS['USUARIO'])
             switch_view(init_form)
             loginMsg.value = ""
@@ -282,22 +312,21 @@ def main(page: ft.Page):
 
     def obterInfoMaquina(e): #PEGA INFORMAÇÂO DAS MAQUINAS DISPONIVEIS
         try:
-            resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.client_storage.get("TOKEN"),'INFOMAQ':True})
+            resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.session.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.session.get("TOKEN"),'INFOMAQ':True})
             if "TOKEN EXPIRADO" in resp.text:
                 switch_view(login_form)
                 return
             resp = resp.json()
             if resp['tipo']=='TEMPO':
-                maqInfo.value = f"Essa máquina consome R${round(resp['preco'],2)} por minuto.\nVocê poderá jogar por no máximo {calcTempoMaq(page.client_storage.get('UserInfo')['CREDITOS'],resp['preco'])} usando todo o saldo."
+                maqInfo.value = f"Essa máquina consome R${round(resp['preco'],2)} por minuto.\nVocê poderá jogar por no máximo {calcTempoMaq(page.session.get('UserInfo')['CREDITOS'],resp['preco'])} usando todo o saldo."
             else:
-                creditosSelecionados.value = resp['preco'] if page.client_storage.get("UserInfo")['CREDITOS']>resp['preco'] else 0
+                creditosSelecionados.value = resp['preco'] if page.session.get("UserInfo")['CREDITOS']>resp['preco'] else 0
                 maqInfo.value = f"Cada ficha para essa maquina custa R${round(resp['preco'],2)}\n *Você não poderá recuperar esse saldo após confirmar"
             switch_view(descricao_maquina)
-            page.client_storage.set("LastMaquinaPrice",resp['preco'])
-            page.client_storage.set("LastMaquinaTipe",resp['tipo'])
+            page.session.set("LastMaquinaPrice",resp['preco'])
+            page.session.set("LastMaquinaTipe",resp['tipo'])
             return
         except:
-            import traceback
             print(traceback.format_exc())
             msgRetornoSuperior.value = f"Máquina '{codigoMaquina.value}' não encontrada."
             msgRetornoSuperior.visible = True
@@ -310,9 +339,9 @@ def main(page: ft.Page):
         birth_date_inputButton.update()
  
     def updateTempoMaquina(e): #ATUALIZA O TEMPO DE MAQUINA PARA EXIBIR PARA O USUARIO
-        LastMaquinaPrice = page.client_storage.get("LastMaquinaPrice")
+        LastMaquinaPrice = page.session.get("LastMaquinaPrice")
         e.data = e.data.replace(",",".")
-        if page.client_storage.get("LastMaquinaTipe")=='TEMPO':
+        if page.session.get("LastMaquinaTipe")=='TEMPO':
             maqInfo.value = f"Essa máquina consome R${round(LastMaquinaPrice,2)} por minuto.\nVocê poderá jogar por {calcTempoMaq(e.data,LastMaquinaPrice)}."
         else:
             maqInfo.value = f"Cada ficha para essa maquina custa R${round(LastMaquinaPrice,2)}\nVocê poderá jogar com {calcFichaMaq(e.data,LastMaquinaPrice)}.\n *Você não poderá recuperar esse saldo após confirmar"
@@ -333,7 +362,7 @@ def main(page: ft.Page):
             switch_view(init_form)
             return
 
-        resp = requests.post("https://5n2aczmdhfw7lbu32kgmnuhhdq0bmqfz.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"QUANTIDADE":quantidade})
+        resp = requests.post("https://5n2aczmdhfw7lbu32kgmnuhhdq0bmqfz.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.session.get("UserInfo")['USUARIO'],"QUANTIDADE":quantidade})
         navegador = criar_form(
                 superiorInfo, msgRetornoSuperior,LOGO,
                 criar_botao("VOLTAR", voltarComprarCreditos)
@@ -348,7 +377,7 @@ def main(page: ft.Page):
         page.client_storage.remove("UserInfo")
 
         password_input.value=''
-        page.client_storage.set("TOKEN", '')
+        page.session.set("TOKEN", '')
         switch_view(login_form)
         return
     
@@ -387,7 +416,7 @@ def main(page: ft.Page):
         page.update()  # Atualiza a interface
 
     
-    userInfo = page.client_storage.get("UserInfo")
+    userInfo = page.session.get("UserInfo")
     login_form = criar_form(
         ft.Text("", size=21, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
         LOGO, ft.Text("Login", size=30, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER,color='white'),
@@ -465,7 +494,7 @@ def main(page: ft.Page):
     def inscreverCampeonato(e,item): #FECHA MAQUINAS COM TEMPO DISPONIVEL
         def aceitar(e):
             botaoAceitarRegulamento.disabled = True
-            resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.client_storage.get("UserInfo")['USUARIO'],"TORNEIO":(item['NOME'],item['DATA']),"TOKEN":page.client_storage.get("TOKEN")}).content.decode()
+            resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.session.get("UserInfo")['USUARIO'],"TORNEIO":(item['NOME'],item['DATA']),"TOKEN":page.session.get("TOKEN")}).content.decode()
             page.close(dialog2)
             page.update()
             time.sleep(0.1)
@@ -500,7 +529,7 @@ def main(page: ft.Page):
         resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"LISTAR":True}).json()
         campeonatosDados = []
         for item in resp:
-            if not page.client_storage.get("UserInfo")['USUARIO'] in [x['USUARIO'] for x in item['INSCRITOS']]:
+            if not page.session.get("UserInfo")['USUARIO'] in [x['USUARIO'] for x in item['INSCRITOS']]:
                 buttonInscricao = ft.TextButton(content=ft.Text("INSCREVER-SE", size=16, color="white", weight=ft.FontWeight.BOLD),on_click=lambda e: inscreverCampeonato(e, item),)
             else:
                 buttonInscricao = ft.TextButton(content=ft.Text("JA INSCRITO", size=16, color="green", weight=ft.FontWeight.BOLD))
@@ -573,17 +602,23 @@ def main(page: ft.Page):
         page.bgcolor = ft.Colors.BLACK 
         ajustarComponentes(None,page.width)
         page.theme_mode = ft.ThemeMode.LIGHT
-        if page.client_storage.contains_key("UserInfo") and updateUserInfo(username=page.client_storage.get("UserInfo")['USUARIO']):
+        if page.session.contains_key("UserInfo") and updateUserInfo(username=page.session.get("UserInfo")['USUARIO']):
             switch_view(init_form)
         else:
             switch_view(login_form)
     except:
-        import traceback;print(traceback.format_exc())
+        print(traceback.format_exc())
         switch_view(login_form)
 
-# Executa o aplicativo Flet
-ft.app(target=main)
-# ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', port=80)
-# ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
+def rodar():
+    try:
+        ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
+    except: 
+        print(traceback.format_exc())
+        return rodar()
+rodar()
 
+# Executa o aplicativo Flet
+# ft.app(target=main)
+# ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', port=80)
 #flet run --port=80 --host="0.0.0.0" --web
