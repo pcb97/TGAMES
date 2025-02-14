@@ -46,6 +46,24 @@ def main(page: ft.Page):
     page.scroll = ft.ScrollMode.AUTO
     page.bgcolor = ft.Colors.BLACK12
 
+    def getCache(chave):
+        if page.web:
+            return page.session.get(chave)
+        else:
+            return page.client_storage.get(chave)
+        
+    def setCache(chave,valor):
+        if page.web:
+            return page.session.set(chave,valor)
+        else:
+            return page.client_storage.set(chave,valor)
+
+    def contemCache(chave):
+        if page.web:
+            return page.session.contains_key(chave)
+        else:
+            return page.client_storage.contains_key(chave)
+
 
     def arredondar_para_baixo(numero,tratar=False):
         valor = math.floor(numero * 100) / 100
@@ -70,7 +88,7 @@ def main(page: ft.Page):
         botao.content.value = texto
         page.update()
 
-    def criar_botao(texto, on_click, cor=ft.Colors.AMBER_500,tamanho = page.window_width * 0.8):
+    def criar_botao(texto, on_click, cor=ft.Colors.AMBER_500,tamanho = page.window_width * 0.8,visivel = True):
         def rodar(e):
             return gerenciar_clique(e, on_click,cor,texto)
         return ft.ElevatedButton(
@@ -81,7 +99,8 @@ def main(page: ft.Page):
                 side=ft.BorderSide(2, ft.Colors.RED),
                 bgcolor=cor,
                 color=ft.Colors.WHITE,
-            ),width=tamanho
+            ),width=tamanho,
+            visible=visivel
         )
 
     def switch_view(view):
@@ -113,22 +132,22 @@ def main(page: ft.Page):
             float(creditosSelecionados.value)
         except:
             return
-        CREDITOS = float(creditosSelecionados.value) if creditosSelecionados.value!=0 else page.session.get("UserInfo")['CREDITOS']
+        CREDITOS = float(creditosSelecionados.value) if creditosSelecionados.value!=0 else getCache("UserInfo")['CREDITOS']
 
 
-        if CREDITOS>arredondar_para_baixo(page.session.get("UserInfo")['CREDITOS']) or page.session.get("UserInfo")['CREDITOS']==0:
+        if CREDITOS>arredondar_para_baixo(getCache("UserInfo")['CREDITOS']) or getCache("UserInfo")['CREDITOS']==0:
             msgRetornoSuperior.value = "CRÉDITOS INSUFICIENTES."
             msgRetornoSuperior.visible = True
             msgRetornoSuperior.update()
             return
         
-        resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.session.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.session.get("TOKEN"),"QNTD_CREDITOS":CREDITOS}).content.decode()
+        resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":getCache("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":getCache("TOKEN"),"QNTD_CREDITOS":CREDITOS}).content.decode()
         if "TOKEN EXPIRADO" in resp:
             switch_view(login_form)
             return
         if "INICIADO" in resp:
             maqInfo.value = "Máquina liberada!"
-            text_superior.value = f"Você tem {page.session.get('UserInfo')['CREDITOS']-CREDITOS} Reais"
+            text_superior.value = f"Você tem {getCache('UserInfo')['CREDITOS']-CREDITOS} Reais"
             msgRetornoSuperior.visible = False
             updateUserInfo()
             switch_view(maquina_form_suced)
@@ -144,7 +163,7 @@ def main(page: ft.Page):
         def finalizar_maquina(e):
             botaoCancelarMaq.disabled = True
             botaoCancelarMaq.update()
-            resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"ID":dados['ID'],"PARAR":True,'USUARIO':dados['USUARIO'],"MAQUINA":dados['MAQUINA'],'TOKEN':page.session.get("TOKEN")}).content.decode()
+            resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"ID":dados['ID'],"PARAR":True,'USUARIO':dados['USUARIO'],"MAQUINA":dados['MAQUINA'],'TOKEN':getCache("TOKEN")}).content.decode()
             if "TOKEN EXPIRADO" in resp:
                 dialog.open = False
                 page.update()
@@ -173,21 +192,21 @@ def main(page: ft.Page):
         page.update()
 
     def updateUserInfo(username=None): #LÊ OS DADOS DO USUARIO E ATUALIZA AS VARIAVEIS.
-        username = username if username!=None else page.session.get("UserInfo")['USUARIO']
+        username = username if username!=None else getCache("UserInfo")['USUARIO']
 
-        resp = requests.post("https://utpbliutdlvfuvnjyblsb2qrqy0heikd.lambda-url.sa-east-1.on.aws/",json={"USUARIO":username,"TOKEN":page.session.get("TOKEN")})
+        resp = requests.post("https://utpbliutdlvfuvnjyblsb2qrqy0heikd.lambda-url.sa-east-1.on.aws/",json={"USUARIO":username,"TOKEN":getCache("TOKEN")})
         if "TOKEN EXPIRADO" in resp.content.decode():
             switch_view(login_form)
             return False
-        page.session.set("UserInfo",json.loads(resp.content))
+        setCache("UserInfo",json.loads(resp.content))
         try:
-            text_superior.value = f"Saldo: {arredondar_para_baixo(page.session.get('UserInfo')['CREDITOS'],tratar=True)} Reais"
+            text_superior.value = f"Saldo: {arredondar_para_baixo(getCache('UserInfo')['CREDITOS'],tratar=True)} Reais"
         except: pass
         try:
             maquinasInfoDados = []
-            if len(page.session.get("UserInfo")['MAQ_ATIVAS'])>0:
+            if len(getCache("UserInfo")['MAQ_ATIVAS'])>0:
                 maquinasInfoDados.append(ft.Text("MAQUINAS ATIVAS:", size=16, color="white", weight=ft.FontWeight.BOLD))
-            for item in page.session.get("UserInfo")['MAQ_ATIVAS']:
+            for item in getCache("UserInfo")['MAQ_ATIVAS']:
                 inicio = item['DATA_INICIO'].split(".")[0].split("T")
                 fim = item['DATA_FIM'].split(".")[0].split("T")
                 dados = ft.Row(
@@ -212,15 +231,20 @@ def main(page: ft.Page):
                 maquinasInfoDados.append(ft.Container(dados,border=ft.border.all(3, ft.Colors.WHITE),border_radius=10,alignment=ft.alignment.center))    
 
             maquinasAtivas.controls = maquinasInfoDados
+
+            if getCache("UserInfo").get("ADMIN",False):
+                print("MODO ADM")
+                ADM_MODE.visible = True
+            else:
+                ADM_MODE.visible = False
         except: pass
         try:
-            creditosSelecionados.value = arredondar_para_baixo(page.session.get("UserInfo")['CREDITOS'])
+            creditosSelecionados.value = arredondar_para_baixo(getCache("UserInfo")['CREDITOS'])
         except: pass
         page.update()
         return True
     
     def login(e): #FAZ LOGIN E ARMAZENA O TOKEN DO USUARIO
-        time.sleep(2)
         username, password = username_input.value, password_input.value
         if username=='' or password=='':
             loginMsg.value = 'Usuário/EMAIL ou senha inválidos'
@@ -230,7 +254,7 @@ def main(page: ft.Page):
 
         if "TOKEN" in resp:
             DADOS = eval(resp)
-            page.session.set("TOKEN", DADOS['TOKEN'])
+            setCache("TOKEN", DADOS['TOKEN'])
             updateUserInfo(DADOS['USUARIO'])
             switch_view(init_form)
             loginMsg.value = ""
@@ -312,19 +336,19 @@ def main(page: ft.Page):
 
     def obterInfoMaquina(e): #PEGA INFORMAÇÂO DAS MAQUINAS DISPONIVEIS
         try:
-            resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.session.get("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":page.session.get("TOKEN"),'INFOMAQ':True})
+            resp = requests.post("https://e6tqv6zegsyxd2zhuzkhuug5o40wdmrf.lambda-url.sa-east-1.on.aws/",json={"USUARIO":getCache("UserInfo")['USUARIO'],"MAQUINA":codigoMaquina.value,"TOKEN":getCache("TOKEN"),'INFOMAQ':True})
             if "TOKEN EXPIRADO" in resp.text:
                 switch_view(login_form)
                 return
             resp = resp.json()
             if resp['tipo']=='TEMPO':
-                maqInfo.value = f"Essa máquina consome R${round(resp['preco'],2)} por minuto.\nVocê poderá jogar por no máximo {calcTempoMaq(page.session.get('UserInfo')['CREDITOS'],resp['preco'])} usando todo o saldo."
+                maqInfo.value = f"Essa máquina consome R${round(resp['preco'],2)} por minuto.\nVocê poderá jogar por no máximo {calcTempoMaq(getCache('UserInfo')['CREDITOS'],resp['preco'])} usando todo o saldo."
             else:
-                creditosSelecionados.value = resp['preco'] if page.session.get("UserInfo")['CREDITOS']>resp['preco'] else 0
+                creditosSelecionados.value = resp['preco'] if getCache("UserInfo")['CREDITOS']>resp['preco'] else 0
                 maqInfo.value = f"Cada ficha para essa maquina custa R${round(resp['preco'],2)}\n *Você não poderá recuperar esse saldo após confirmar"
             switch_view(descricao_maquina)
-            page.session.set("LastMaquinaPrice",resp['preco'])
-            page.session.set("LastMaquinaTipe",resp['tipo'])
+            setCache("LastMaquinaPrice",resp['preco'])
+            setCache("LastMaquinaTipe",resp['tipo'])
             return
         except:
             print(traceback.format_exc())
@@ -339,9 +363,9 @@ def main(page: ft.Page):
         birth_date_inputButton.update()
  
     def updateTempoMaquina(e): #ATUALIZA O TEMPO DE MAQUINA PARA EXIBIR PARA O USUARIO
-        LastMaquinaPrice = page.session.get("LastMaquinaPrice")
+        LastMaquinaPrice = getCache("LastMaquinaPrice")
         e.data = e.data.replace(",",".")
-        if page.session.get("LastMaquinaTipe")=='TEMPO':
+        if getCache("LastMaquinaTipe")=='TEMPO':
             maqInfo.value = f"Essa máquina consome R${round(LastMaquinaPrice,2)} por minuto.\nVocê poderá jogar por {calcTempoMaq(e.data,LastMaquinaPrice)}."
         else:
             maqInfo.value = f"Cada ficha para essa maquina custa R${round(LastMaquinaPrice,2)}\nVocê poderá jogar com {calcFichaMaq(e.data,LastMaquinaPrice)}.\n *Você não poderá recuperar esse saldo após confirmar"
@@ -362,7 +386,7 @@ def main(page: ft.Page):
             switch_view(init_form)
             return
 
-        resp = requests.post("https://5n2aczmdhfw7lbu32kgmnuhhdq0bmqfz.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.session.get("UserInfo")['USUARIO'],"QUANTIDADE":quantidade})
+        resp = requests.post("https://5n2aczmdhfw7lbu32kgmnuhhdq0bmqfz.lambda-url.sa-east-1.on.aws/",json={"USUARIO":getCache("UserInfo")['USUARIO'],"QUANTIDADE":quantidade})
         navegador = criar_form(
                 superiorInfo, msgRetornoSuperior,LOGO,
                 criar_botao("VOLTAR", voltarComprarCreditos)
@@ -377,7 +401,7 @@ def main(page: ft.Page):
         page.client_storage.remove("UserInfo")
 
         password_input.value=''
-        page.session.set("TOKEN", '')
+        setCache("TOKEN", '')
         switch_view(login_form)
         return
     
@@ -390,6 +414,7 @@ def main(page: ft.Page):
 
     def ajustarComponentes(dados,largura=None):
         largura = json.loads(dados.data)['width'] if largura==None else largura
+        setCache("largura",largura)
         if largura>800: 
             largura = 800
             LOGO.width = 800
@@ -413,10 +438,12 @@ def main(page: ft.Page):
         ajustButton(botaoCampeonatos)
         ajustButton(SairButton,largura * 0.6)
         ajustButton(botaoCampeonatos)
+        ajustButton(ADM_MODE)
+        ajustButton(INSCRITOS_CAMPEONATOS)
         page.update()  # Atualiza a interface
 
     
-    userInfo = page.session.get("UserInfo")
+    userInfo = getCache("UserInfo")
     login_form = criar_form(
         ft.Text("", size=21, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER),
         LOGO, ft.Text("Login", size=30, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER,color='white'),
@@ -494,7 +521,7 @@ def main(page: ft.Page):
     def inscreverCampeonato(e,item): #FECHA MAQUINAS COM TEMPO DISPONIVEL
         def aceitar(e):
             botaoAceitarRegulamento.disabled = True
-            resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"USUARIO":page.session.get("UserInfo")['USUARIO'],"TORNEIO":(item['NOME'],item['DATA']),"TOKEN":page.session.get("TOKEN")}).content.decode()
+            resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"USUARIO":getCache("UserInfo")['USUARIO'],"TORNEIO":(item['NOME'],item['DATA']),"TOKEN":getCache("TOKEN")}).content.decode()
             page.close(dialog2)
             page.update()
             time.sleep(0.1)
@@ -524,12 +551,49 @@ def main(page: ft.Page):
         page.update()
 
 
+    def createTable(dados):
+        colunas = dados[0].keys()
+        TABELA =  ft.DataTable(
+                columns=[
+                    ft.DataColumn(ft.Text(x, weight=ft.FontWeight.BOLD)) for x in colunas
+                ],
+                rows=[
+                    ft.DataRow(
+                        cells=[
+                            ft.DataCell(ft.Text(row[coluna], weight=ft.FontWeight.BOLD,no_wrap=False,overflow=ft.TextOverflow.VISIBLE)) for coluna in colunas
+                            
+                        ]
+                    ) for row in dados
+
+                ],
+            width=getCache("largura")+100,
+            bgcolor="yellow",
+            border=ft.border.all(2, "red"),
+            border_radius=10,
+            vertical_lines=ft.BorderSide(3, "blue"),
+            horizontal_lines=ft.BorderSide(1, "green"),
+            sort_column_index=0,
+            sort_ascending=True,
+            heading_row_color=ft.Colors.BLACK12,
+            heading_row_height=100,
+            data_row_color={ft.ControlState.HOVERED: "0x30FF0000"},
+            show_checkbox_column=True,
+            divider_thickness=0,
+            expand=True,
+            column_spacing=getCache("largura") * 0.02,
+            height=None,
+            )
+        cv = ft.Column([TABELA],scroll=True)
+        rv = ft.Row([cv],scroll=True,expand=1,vertical_alignment=ft.CrossAxisAlignment.START)
+        return criar_form(superiorInfo, rv)
+
 
     def getTorneios():
         resp = requests.post("https://agephcxlxb7ah2fsmsmrrmmgd40acodq.lambda-url.sa-east-1.on.aws/",json={"LISTAR":True}).json()
         campeonatosDados = []
+        campeonatosDadosADM = []
         for item in resp:
-            if not page.session.get("UserInfo")['USUARIO'] in [x['USUARIO'] for x in item['INSCRITOS']]:
+            if not getCache("UserInfo")['USUARIO'] in [x['USUARIO'] for x in item['INSCRITOS']]:
                 buttonInscricao = ft.TextButton(content=ft.Text("INSCREVER-SE", size=16, color="white", weight=ft.FontWeight.BOLD),on_click=lambda e: inscreverCampeonato(e, item),)
             else:
                 buttonInscricao = ft.TextButton(content=ft.Text("JA INSCRITO", size=16, color="green", weight=ft.FontWeight.BOLD))
@@ -557,21 +621,49 @@ def main(page: ft.Page):
                 alignment=ft.MainAxisAlignment.CENTER,  # Alinha horizontalmente no centro
                 vertical_alignment=ft.CrossAxisAlignment.CENTER,  # Alinha verticalmente no centro
                 )])
-            campeonatosDados.append(ft.Container(dados,border=ft.border.all(3, ft.Colors.WHITE),border_radius=10,alignment=ft.alignment.center))    
+            
+            dadosADM = ft.Column([ft.Row(
+                [
+                    ft.Image(src = item['IMAGEM'],width=70,height=100),
+                    ft.Text(
+                        f"TORNEIO: {item['NOME']}\nInicio: {item['DATA']}\nValor Inscrição:  {item['VALOR_INSCRICAO']} Reais",
+                        size=20,
+                        color="white",
+                        weight=ft.FontWeight.BOLD,
+                    )
+                ],
+                alignment=ft.MainAxisAlignment.CENTER,  # Alinha horizontalmente no centro
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,  # Alinha verticalmente no centro
+                )])
+                
+            campeonatosDados.append(ft.Container(dados,border=ft.border.all(3, ft.Colors.WHITE),border_radius=10,alignment=ft.alignment.center))  
+            campeonatosDadosADM.append(ft.Container(dadosADM,border=ft.border.all(3, ft.Colors.WHITE),border_radius=10,alignment=ft.alignment.center,on_click=lambda x:(campeonatoList:=createTable(item["INSCRITOS"]),switch_view(campeonatoList))[-1]))  
         campeonadosDisp.controls = campeonatosDados
+        inscritosCampeonatosDisp.controls = campeonatosDadosADM
         return None
     
     campeonatoForm = criar_form(
         superiorInfo, msgRetornoSuperior, LOGO,
-        ft.Text("Campeonatos:", size=30, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER,color='white'),
+        ft.Text("Torneios:", size=30, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER,color='white'),
         campeonadosDisp := ft.Column(controls=[]),
     )
-        
+
+    VerInscritosCampeonatosForm = criar_form(
+        superiorInfo, msgRetornoSuperior, LOGO,
+        ft.Text("Torneios:", size=30, weight=ft.FontWeight.BOLD, text_align=ft.TextAlign.CENTER,color='white'),
+        inscritosCampeonatosDisp := ft.Column(controls=[]),
+    )
+    ADMForm = criar_form(
+        superiorInfo, msgRetornoSuperior, LOGO,
+        INSCRITOS_CAMPEONATOS:=criar_botao("Inscritos torneios", lambda e: (getTorneios(), switch_view(VerInscritosCampeonatosForm))[-1]),
+    )
+
     init_form = criar_form(
         superiorInfo, msgRetornoSuperior, LOGO,
         liberarMaqButton := criar_botao("Liberar Máquina", lambda e: switch_view(escolher_maquina)),
         ComprarCreditosButton := criar_botao("Comprar Créditos", lambda e: switch_view(compraCreditos_form)),
-        botaoCampeonatos:=criar_botao("Campeonatos", lambda e: (getTorneios(), switch_view(campeonatoForm))[-1] ),
+        botaoCampeonatos:=criar_botao("Torneios", lambda e: (getTorneios(), switch_view(campeonatoForm))[-1] ),
+        ADM_MODE:=criar_botao("ADM", lambda e: switch_view(ADMForm),visivel=False),
 
         maquinasAtivas := ft.Column(controls=[]),
         SairButton := criar_botao("SAIR",DESLOGAR,cor=ft.Colors.RED,tamanho=200)
@@ -602,7 +694,7 @@ def main(page: ft.Page):
         page.bgcolor = ft.Colors.BLACK 
         ajustarComponentes(None,page.width)
         page.theme_mode = ft.ThemeMode.LIGHT
-        if page.session.contains_key("UserInfo") and updateUserInfo(username=page.session.get("UserInfo")['USUARIO']):
+        if contemCache("UserInfo") and updateUserInfo(username=getCache("UserInfo")['USUARIO']):
             switch_view(init_form)
         else:
             switch_view(login_form)
@@ -613,6 +705,7 @@ def main(page: ft.Page):
 def rodar():
     try:
         ft.app(target=main, view=ft.WEB_BROWSER, assets_dir='assets', host = "0.0.0.0", port=80)
+        # ft.app(target=main)
     except: 
         print(traceback.format_exc())
         return rodar()
