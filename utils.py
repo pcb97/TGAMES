@@ -2,6 +2,7 @@ import flet as ft
 import traceback
 import math
 import time
+import sys
 
 def getCache(page,chave):
     if page.web:
